@@ -1,5 +1,6 @@
-import { DashboardFeature } from '@/components/dashboard/dashboard-feature'
+
+import Escrow from '@/components/escrow/Escrow'
 
 export default function Home() {
-  return <DashboardFeature />
+  return <Escrow />
 }

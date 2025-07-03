@@ -1,4 +1,4 @@
 # escrow
 
-program side done
-frontend left
+program side done ✅
+frontend left 🏗️

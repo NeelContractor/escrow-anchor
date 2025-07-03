@@ -36,6 +36,10 @@ export type EscrowProgram = {
           "writable": true
         },
         {
+          "name": "mintB",
+          "writable": true
+        },
+        {
           "name": "makerAtaA",
           "writable": true,
           "pda": {
@@ -263,6 +267,10 @@ export type EscrowProgram = {
         {
           "name": "deposit",
           "type": "u64"
+        },
+        {
+          "name": "receive",
+          "type": "u64"
         }
       ]
     },
@@ -478,6 +486,13 @@ export type EscrowProgram = {
           ]
         },
         {
+          "name": "mintB",
+          "writable": true,
+          "relations": [
+            "escrow"
+          ]
+        },
+        {
           "name": "takerAtaA",
           "writable": true,
           "pda": {
@@ -526,6 +541,186 @@ export type EscrowProgram = {
               {
                 "kind": "account",
                 "path": "mintA"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "takerAtaB",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "taker"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mintB"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "makerAtaB",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "maker"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mintB"
               }
             ],
             "program": {
@@ -733,6 +928,18 @@ export type EscrowProgram = {
           {
             "name": "mintA",
             "type": "pubkey"
+          },
+          {
+            "name": "mintB",
+            "type": "pubkey"
+          },
+          {
+            "name": "deposit",
+            "type": "u64"
+          },
+          {
+            "name": "receive",
+            "type": "u64"
           },
           {
             "name": "bump",

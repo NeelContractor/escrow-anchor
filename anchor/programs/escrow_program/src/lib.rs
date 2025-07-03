@@ -11,11 +11,14 @@ pub mod escrow_program {
 
     use super::*;
 
-    pub fn make(ctx: Context<Make>, seed: u64, deposit: u64) -> Result<()> {
+    pub fn make(ctx: Context<Make>, seed: u64, deposit: u64, receive: u64) -> Result<()> {
         ctx.accounts.escrow.set_inner(Escrow { 
             seed, 
             maker: ctx.accounts.maker.key(), 
             mint_a: ctx.accounts.mint_a.key(), 
+            mint_b: ctx.accounts.mint_b.key(), 
+            deposit,
+            receive,
             bump: ctx.bumps.escrow
         });
 
@@ -33,6 +36,15 @@ pub mod escrow_program {
 
     pub fn take(ctx: Context<Taker>) -> Result<()> {
         let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_accounts = TransferChecked {
+            from: ctx.accounts.taker_ata_b.to_account_info(),
+            to: ctx.accounts.maker_ata_b.to_account_info(),
+            mint: ctx.accounts.mint_b.to_account_info(),
+            authority: ctx.accounts.taker.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new(cpi_program.clone(), cpi_accounts);
+        transfer_checked(cpi_ctx, ctx.accounts.escrow.receive, ctx.accounts.mint_b.decimals)?;
+
         let cpi_accounts = TransferChecked {
             from: ctx.accounts.vault.to_account_info(),
             mint: ctx.accounts.mint_a.to_account_info(),
@@ -104,6 +116,8 @@ pub struct Make<'info> {
 
     #[account(mut)]
     pub mint_a: InterfaceAccount<'info, Mint>,
+    #[account(mut)]
+    pub mint_b: InterfaceAccount<'info, Mint>,
 
     #[account(
         mut,
@@ -139,6 +153,8 @@ pub struct Taker<'info> {
     pub maker: SystemAccount<'info>,
     #[account(mut)]
     pub mint_a: Box<InterfaceAccount<'info, Mint>>,
+    #[account(mut)]
+    pub mint_b: Box<InterfaceAccount<'info, Mint>>,
     #[account(
         init_if_needed,
         payer = taker,
@@ -149,9 +165,25 @@ pub struct Taker<'info> {
 
     #[account(
         mut,
+        associated_token::mint = mint_b,
+        associated_token::authority = taker,
+    )]
+    pub taker_ata_b: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        init_if_needed,
+        payer = taker,
+        associated_token::mint = mint_b,
+        associated_token::authority = maker,
+    )]
+    pub maker_ata_b: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(
+        mut,
         close = maker,
         has_one = maker,
         has_one = mint_a,
+        has_one = mint_b,
         seeds = [b"escrow", maker.key().as_ref(), escrow.seed.to_le_bytes().as_ref()],
         bump = escrow.bump
     )]
@@ -207,7 +239,8 @@ pub struct Escrow {
     pub seed: u64,
     pub maker: Pubkey,
     pub mint_a: Pubkey,
-    // pub mint_b: Pubkey,
-    // pub receive: u64,
+    pub mint_b: Pubkey,
+    pub deposit: u64,
+    pub receive: u64,
     pub bump: u8
 }
