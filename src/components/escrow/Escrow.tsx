@@ -72,7 +72,7 @@ export default function Escrow() {
             {/* Header */}
             <div className="flex justify-between items-center">
                 <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    Two-Mint Escrow
+                    Escrow Anchor
                 </h1>
                 <WalletButton />
             </div>
