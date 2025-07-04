@@ -42,7 +42,57 @@ export function useEscrowProgram() {
 
   const accounts = useQuery({
     queryKey: ['escrow', 'all', { cluster }],
-    queryFn: () => program.account.escrow.all(),
+    queryFn: async () => {
+      try {
+        // First try the normal approach
+        const allAccounts = await program.account.escrow.all();
+        return allAccounts;
+      } catch (error) {
+        console.warn('Failed to fetch all accounts at once, trying individual fetch approach:', error);
+        
+        try {
+          // Fallback: Get program accounts and decode individually
+          const programAccounts = await connection.getProgramAccounts(programId);
+          console.log(`Found ${programAccounts.length} program accounts`);
+          
+          const validAccounts = [];
+          const corruptedAccounts = [];
+          
+          for (const { pubkey, account } of programAccounts) {
+            try {
+              // Try to decode the account data
+              const decoded = program.coder.accounts.decode('escrow', account.data);
+              validAccounts.push({ 
+                publicKey: pubkey, 
+                account: decoded 
+              });
+            } catch (decodeError) {
+              console.warn(`Skipping corrupted account ${pubkey.toString()}:`, decodeError);
+              corruptedAccounts.push({
+                pubkey: pubkey.toString(),
+                dataLength: account.data.length,
+                owner: account.owner.toString()
+              });
+            }
+          }
+          
+          if (corruptedAccounts.length > 0) {
+            console.warn(`Found ${corruptedAccounts.length} corrupted accounts:`, corruptedAccounts);
+            toast.warning(`Found ${corruptedAccounts.length} corrupted escrow accounts that will be skipped`);
+          }
+          
+          console.log(`Successfully decoded ${validAccounts.length} valid accounts`);
+          return validAccounts;
+          
+        } catch (fallbackError) {
+          console.error('Fallback approach also failed:', fallbackError);
+          toast.error('Failed to fetch escrow accounts');
+          return [];
+        }
+      }
+    },
+    retry: 1,
+    retryDelay: 1000,
   })
 
   const getProgramAccount = useQuery({

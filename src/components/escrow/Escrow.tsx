@@ -8,12 +8,12 @@ import { Badge } from "../ui/badge";
 import { Separator } from "../ui/separator";
 import { useEscrowProgram, useEscrowProgramAccount } from "./escrow-data-access";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
 import { toast } from "sonner";
 import { ExternalLink, RefreshCw, ArrowRightLeft } from "lucide-react";
 import { BN } from "@coral-xyz/anchor";
-import { getAssociatedTokenAddressSync, getMint, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getAssociatedTokenAddressSync, getMint, Mint, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 
 export default function Escrow() {
     const { publicKey } = useWallet();
@@ -64,8 +64,6 @@ export default function Escrow() {
         const randomSeed = Math.floor(Math.random() * 1000000);
         setSeed(randomSeed.toString());
     };
-
-    console.log(accounts.data);
 
     return (
         <div className="max-w-6xl mx-auto p-6 space-y-8">
@@ -198,7 +196,7 @@ export default function Escrow() {
                                 No active escrows found
                             </div>
                         ) : (
-                            <div className="space-y-4">
+                            <div className="space-y-4"> 
                                 {accounts.data?.map((escrow) => (
                                     <EscrowCard key={escrow.publicKey.toString()} escrowPubkey={escrow.publicKey} escrowAcc={escrow.account} />
                                 ))}
@@ -222,14 +220,35 @@ interface EscrowAccType {
 
 }
 
-async function EscrowCard({ escrowPubkey, escrowAcc }: { escrowPubkey: PublicKey, escrowAcc: EscrowAccType }) {
+function EscrowCard({ escrowPubkey, escrowAcc }: { escrowPubkey: PublicKey, escrowAcc: EscrowAccType }) {
     const { publicKey } = useWallet();
     const { program } = useEscrowProgram();
     const { take, refund } = useEscrowProgramAccount({ account: escrowPubkey });
     const { connection } = useConnection();
 
-    const allescrowaccs = program.account.escrow.all();
-    console.log(allescrowaccs);
+    // State for mint data
+    const [mintAData, setMintAData] = useState<Mint | null>(null);
+    const [mintBData, setMintBData] = useState<Mint | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchMintData = async () => {
+            try {
+                const [mintAResult, mintBResult] = await Promise.all([
+                    getMint(connection, escrowAcc.mintA),
+                    getMint(connection, escrowAcc.mintB)
+                ]);
+                setMintAData(mintAResult);
+                setMintBData(mintBResult);
+            } catch (error) {
+                console.error("Error fetching mint data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchMintData();
+    }, [connection, escrowAcc.mintA, escrowAcc.mintB]);
 
     const escrowPda = PublicKey.findProgramAddressSync(
         [Buffer.from("escrow"), escrowAcc.maker.toBuffer(), new BN(escrowAcc.seed).toArrayLike(Buffer, 'le', 8)],
@@ -241,21 +260,17 @@ async function EscrowCard({ escrowPubkey, escrowAcc }: { escrowPubkey: PublicKey
         escrowPda,
         true,
         TOKEN_PROGRAM_ID
-    )
-
-    const mintAData = await getMint(
-        connection,
-        escrowAcc.mintA
-    )
-
-    const mintBData = await getMint(
-        connection,
-        escrowAcc.mintB
-    )
+    );
     
     const isOwner = publicKey?.equals(escrowAcc.maker);
-    const depositAmount = (escrowAcc.deposit.toNumber() || 0) / mintAData.decimals;
-    const receiveAmount = escrowAcc.receive.toNumber() / mintBData.decimals;
+    
+    // Calculate amounts with proper decimals
+    const depositAmount = mintAData 
+        ? (escrowAcc.deposit.toNumber() || 0) / Math.pow(10, mintAData.decimals)
+        : 0;
+    const receiveAmount = mintBData 
+        ? escrowAcc.receive.toNumber() / Math.pow(10, mintBData.decimals)
+        : 0;
 
     const handleTake = async () => {
         if (!publicKey) {
@@ -289,6 +304,19 @@ async function EscrowCard({ escrowPubkey, escrowAcc }: { escrowPubkey: PublicKey
         }
     };
 
+    if (loading) {
+        return (
+            <Card className="border-l-4 border-l-blue-500">
+                <CardContent className="p-4">
+                    <div className="flex items-center justify-center">
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        <span className="ml-2">Loading escrow data...</span>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
     return (
         <Card className="border-l-4 border-l-blue-500">
             <CardContent className="p-4">
@@ -308,8 +336,8 @@ async function EscrowCard({ escrowPubkey, escrowAcc }: { escrowPubkey: PublicKey
                             <span className="text-sm font-medium">Offering:</span>
                             <span className="text-sm">{depositAmount} Token A</span>
                         </div>
-                        <div>
-                            {mintAData.address.toBase58()}
+                        <div className="text-xs text-muted-foreground break-all">
+                            {mintAData?.address.toBase58()}
                         </div>
                     </div>
                     <div className="grid gap-2">
@@ -317,8 +345,8 @@ async function EscrowCard({ escrowPubkey, escrowAcc }: { escrowPubkey: PublicKey
                             <span className="text-sm font-medium">Wants:</span>
                             <span className="text-sm">{receiveAmount} Token B</span>
                         </div>
-                        <div>
-                            {mintBData.address.toBase58()}
+                        <div className="text-xs text-muted-foreground break-all">
+                            {mintBData?.address.toBase58()}
                         </div>
                     </div>
                 </div>
@@ -351,3 +379,133 @@ async function EscrowCard({ escrowPubkey, escrowAcc }: { escrowPubkey: PublicKey
         </Card>
     );
 }
+
+// async function EscrowCard({ escrowPubkey, escrowAcc }: { escrowPubkey: PublicKey, escrowAcc: EscrowAccType }) {
+//     const { publicKey } = useWallet();
+//     const { program } = useEscrowProgram();
+//     const { take, refund } = useEscrowProgramAccount({ account: escrowPubkey });
+//     const { connection } = useConnection();
+
+//     const allescrowaccs = program.account.escrow.all();
+//     console.log(allescrowaccs);
+
+//     const escrowPda = PublicKey.findProgramAddressSync(
+//         [Buffer.from("escrow"), escrowAcc.maker.toBuffer(), new BN(escrowAcc.seed).toArrayLike(Buffer, 'le', 8)],
+//         program.programId
+//     )[0];
+
+//     const vault = getAssociatedTokenAddressSync(
+//         escrowAcc.mintA,
+//         escrowPda,
+//         true,
+//         TOKEN_PROGRAM_ID
+//     )
+
+//     const mintAData = await getMint(
+//         connection,
+//         escrowAcc.mintA
+//     )
+
+//     const mintBData = await getMint(
+//         connection,
+//         escrowAcc.mintB
+//     )
+    
+//     const isOwner = publicKey?.equals(escrowAcc.maker);
+//     const depositAmount = (escrowAcc.deposit.toNumber() || 0) / mintAData.decimals;
+//     const receiveAmount = escrowAcc.receive.toNumber() / mintBData.decimals;
+
+//     const handleTake = async () => {
+//         if (!publicKey) {
+//             toast.error("Please connect your wallet first");
+//             return;
+//         }
+
+//         try {
+//             await take.mutateAsync({ taker: publicKey });
+//             toast.success("Escrow taken successfully!");
+//         } catch (error) {
+//             console.error("Error taking escrow:", error);
+//         }
+//     };
+
+//     const handleRefund = async () => {
+//         if (!publicKey) {
+//             toast.error("Please connect your wallet first");
+//             return;
+//         }
+
+//         try {
+//             await refund.mutateAsync({
+//                 seed: escrowAcc.seed.toNumber(),
+//                 maker: escrowAcc.maker,
+//                 mintA: escrowAcc.mintA
+//             });
+//             toast.success("Escrow refunded successfully!");
+//         } catch (error) {
+//             console.error("Error refunding escrow:", error);
+//         }
+//     };
+
+//     return (
+//         <Card className="border-l-4 border-l-blue-500">
+//             <CardContent className="p-4">
+//                 <div className="flex items-center justify-between mb-3">
+//                     <Badge variant={isOwner ? "default" : "secondary"}>
+//                         {isOwner ? "Your Escrow" : "Available"}
+//                     </Badge>
+//                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
+//                         <span>Seed: {escrowAcc.seed.toString()}</span>
+//                         <ExternalLink className="h-3 w-3" />
+//                     </div>
+//                 </div>
+
+//                 <div className="space-y-2 mb-4">
+//                     <div className="grid gap-2">
+//                         <div className="flex justify-between items-center">
+//                             <span className="text-sm font-medium">Offering:</span>
+//                             <span className="text-sm">{depositAmount} Token A</span>
+//                         </div>
+//                         <div>
+//                             {mintAData.address.toBase58()}
+//                         </div>
+//                     </div>
+//                     <div className="grid gap-2">
+//                         <div className="flex justify-between items-center">
+//                             <span className="text-sm font-medium">Wants:</span>
+//                             <span className="text-sm">{receiveAmount} Token B</span>
+//                         </div>
+//                         <div>
+//                             {mintBData.address.toBase58()}
+//                         </div>
+//                     </div>
+//                 </div>
+
+//                 <Separator className="mb-4" />
+
+//                 <div className="flex gap-2">
+//                     {isOwner ? (
+//                         <Button 
+//                             variant="outline" 
+//                             size="sm"
+//                             onClick={handleRefund}
+//                             disabled={refund.isPending}
+//                             className="flex-1"
+//                         >
+//                             {refund.isPending ? "Refunding..." : "Refund"}
+//                         </Button>
+//                     ) : (
+//                         <Button 
+//                             size="sm"
+//                             onClick={handleTake}
+//                             disabled={take.isPending}
+//                             className="flex-1"
+//                         >
+//                             {take.isPending ? "Taking..." : "Take Escrow"}
+//                         </Button>
+//                     )}
+//                 </div>
+//             </CardContent>
+//         </Card>
+//     );
+// }

@@ -8,7 +8,6 @@ declare_id!("AoTepYaXFog4H7HsvxLLgcj7uHfumhD9mqVnY7r4gytf");
 
 #[program]
 pub mod escrow_program {
-
     use super::*;
 
     pub fn make(ctx: Context<Make>, seed: u64, deposit: u64, receive: u64) -> Result<()> {
