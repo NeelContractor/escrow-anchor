@@ -13,7 +13,7 @@ import { PublicKey } from "@solana/web3.js";
 import { toast } from "sonner";
 import { ExternalLink, RefreshCw, ArrowRightLeft } from "lucide-react";
 import { BN } from "@coral-xyz/anchor";
-import { getAssociatedTokenAddressSync, getMint, Mint, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { getMint, Mint } from "@solana/spl-token";
 
 export default function Escrow() {
     const { publicKey } = useWallet();
@@ -222,7 +222,7 @@ interface EscrowAccType {
 
 function EscrowCard({ escrowPubkey, escrowAcc }: { escrowPubkey: PublicKey, escrowAcc: EscrowAccType }) {
     const { publicKey } = useWallet();
-    const { program } = useEscrowProgram();
+    // const { program } = useEscrowProgram();
     const { take, refund } = useEscrowProgramAccount({ account: escrowPubkey });
     const { connection } = useConnection();
 
@@ -250,17 +250,17 @@ function EscrowCard({ escrowPubkey, escrowAcc }: { escrowPubkey: PublicKey, escr
         fetchMintData();
     }, [connection, escrowAcc.mintA, escrowAcc.mintB]);
 
-    const escrowPda = PublicKey.findProgramAddressSync(
-        [Buffer.from("escrow"), escrowAcc.maker.toBuffer(), new BN(escrowAcc.seed).toArrayLike(Buffer, 'le', 8)],
-        program.programId
-    )[0];
+    // const escrowPda = PublicKey.findProgramAddressSync(
+    //     [Buffer.from("escrow"), escrowAcc.maker.toBuffer(), new BN(escrowAcc.seed).toArrayLike(Buffer, 'le', 8)],
+    //     program.programId
+    // )[0];
 
-    const vault = getAssociatedTokenAddressSync(
-        escrowAcc.mintA,
-        escrowPda,
-        true,
-        TOKEN_PROGRAM_ID
-    );
+    // const vault = getAssociatedTokenAddressSync(
+    //     escrowAcc.mintA,
+    //     escrowPda,
+    //     true,
+    //     TOKEN_PROGRAM_ID
+    // );
     
     const isOwner = publicKey?.equals(escrowAcc.maker);
     
